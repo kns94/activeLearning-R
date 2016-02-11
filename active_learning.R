@@ -19,6 +19,19 @@ vote_entropy <- function(df){
 
 active_learning <- function(dataset, inFile, budget, classifier){
   
+  #Delete Existing Files
+  current = getwd()
+  folder = sprintf("%s/www", current)
+  files = list.files(folder)
+  
+  if(length(files) > 0){
+    for(i in 1:length(files)){
+      fullpath = sprintf("%s/%s", folder, files[i])
+      print(fullpath)
+      file.remove(fullpath)
+    } 
+  }
+  
   init_time = Sys.time()
   #Oracle is the ground truth we will use to evaluate active learning
   #oracle <- sprintf("oracle_%s",dataset)
