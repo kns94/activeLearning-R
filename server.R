@@ -12,13 +12,14 @@ createLink <- function(val){
 values = reactiveValues()
 
 #Create a global dataframe
-values$out <- data.frame(matrix(nrow = 1, ncol = 13))
+values$out <- data.frame(matrix(nrow = 1, ncol = 14))
 #Used so that the reactive function is called only once
 values$first <- TRUE
 
 init <- reactive({
   #colnames(values$out) <- c('Summary')
-  colnames(values$out) <- c('DataSet', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'kMeans', 'ChiSq', 'BoxPlot', 'MAD', 'threeSigma', 'ActiveLearning','Time', 'Output')
+  colnames(values$out) <- c('DataSet', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'kMeans', 'ChiSq', 'BoxPlot', 'MAD', 'threeSigma', 'ActiveLearning', 'fmeasure', 'Time', 'Output')
+
   values$out <- values$out[-1,]
 })
 
@@ -51,7 +52,13 @@ server <- function(input, output, session) {
       oracle[i, 'is_outlier'] <- sample(c('no', 'yes'), 1)
     }
     
-    saveRDS(oracle, name_oracle)
+    validate(
+      need(input$file1$datapath, 'Please enter the correct oracle!')
+      #need(batch < budget/3,batch_range)
+    )
+    
+    #The oracle file uploaded
+    oracle <- readRDS(input$file1$datapath)
     
     row <- as.numeric(nrow(dat))
     budget <- as.numeric(input$budget)
@@ -60,7 +67,8 @@ server <- function(input, output, session) {
     #batch_range = sprintf("Batch should be less than %s", as.integer(row/30))
     
     validate(
-      need(budget <= as.integer(row/3) && budget >= as.integer(row/10),range)
+      need(budget <= as.integer(row/3) && budget >= as.integer(row/10),range),
+      need(nrow(oracle) == row, 'Please enter the correct oracle!')
       #need(batch < budget/3,batch_range)
     )
   })
@@ -72,7 +80,7 @@ server <- function(input, output, session) {
       return()
     }
  
-    datasetPath <- sprintf('data/%s.data', input$dataset)
+    datasetPath <- sprintf('data/sources/%s.data', input$dataset)
     dat <- read.csv(datasetPath, header = FALSE)
     
     valid <- validate_classifier(input$classifier)
@@ -106,6 +114,13 @@ server <- function(input, output, session) {
     
     #print(v())
     #print(input$file1$datapath)
+    
+    #Get oracle and save it as a label in training matrix
+    oracle <- readRDS(input$file1$datapath)
+    
+    if(nrow(oracle) != row){
+      return()
+    }
     
     #Pass variables to active learning function
     aloutput <- active_learning(input$dataset, input$file1$datapath, budget, classifier)

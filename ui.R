@@ -15,7 +15,7 @@ ui <- fluidPage(
     br(),
     br(),
     textOutput('err'),
-    width = 3
+    width = 2
   ),
   
   mainPanel(
@@ -24,6 +24,7 @@ ui <- fluidPage(
     fileInput('file1', 'Upload Oracle rds File', accept=c('rds')),
     br(),
     uiOutput("learning"),
+    #textOutput('err1'),
     tableOutput("batch_table"),
     br(),
     dataTableOutput("final_analysis")

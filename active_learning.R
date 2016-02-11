@@ -23,7 +23,7 @@ active_learning <- function(dataset, inFile, budget, classifier){
   #Oracle is the ground truth we will use to evaluate active learning
   #oracle <- sprintf("oracle_%s",dataset)
   #Fetch specified dataset from data folder
-  datasetPath <- sprintf('data/%s.data', dataset)
+  datasetPath <- sprintf('data/sources/%s.data', dataset)
   dat <- read.csv(datasetPath, header = FALSE)
   #Take non categorical columns
   data_frame <- dat[sapply(dat, function(x) !is.factor(x))]
@@ -31,6 +31,9 @@ active_learning <- function(dataset, inFile, budget, classifier){
   outlier_file_name = sprintf('data/outliers/%s_outliers.rds', dataset)
   print(outlier_file_name)
   df_outlier <- readRDS(outlier_file_name)
+  
+  #Get oracle and save it as a label in training matrix
+  oracle <- readRDS(inFile)
   
   num_outliers <- list()
   num_outliers$LOF = length(which(df_outlier$LOF == 1))
@@ -78,13 +81,14 @@ active_learning <- function(dataset, inFile, budget, classifier){
   #Add another column called is_outlier
   training_mat$is_outlier <- NA
   
-  #Get oracle and save it as a label in training matrix
-  oracle <- readRDS(inFile)
+
   #For values with disagreement, fill the oracle output
   training_mat[disagreement, 'is_outlier'] <- oracle[disagreement, 'is_outlier']
   
   #Test matrix is the values not labeled 
-  test_mat <- subset(training_mat, is.na(training_mat$is_outlier))
+  #test_mat <- subset(training_mat, is.na(training_mat$is_outlier))
+  #Test matrix, where values are not labeled
+  test_mat <- subset(training_mat, select = -c(is_outlier))
   #Training matrix is the values labeled
   training_mat <- subset(training_mat, training_mat$is_outlier != "NA")
   #Renaming labels as yes and no
@@ -117,13 +121,15 @@ active_learning <- function(dataset, inFile, budget, classifier){
   outputdf$activeLearning <- NA
   
   #Removes rows trained
-  df_outlier <- df_outlier[!rownames(df_outlier) %in% rownames(training_mat),]
+  #df_outlier <- df_outlier[!rownames(df_outlier) %in% rownames(training_mat),]
   
   #data <- training_mat[sapply(training_mat, function(x) !is.factor(x))]
   #DataFrame without labels
   data <- subset(training_mat, select = -c(is_outlier))
   #DataFrame with labels
   labels <- training_mat[, 'is_outlier']
+  
+  fmeasure <- NA
   
   #Train using classifier 
   train_out <- NA
@@ -142,24 +148,53 @@ active_learning <- function(dataset, inFile, budget, classifier){
     #If the classifier is trained
     if(!is.na(train_out[1])){
       # Classifies the test data set with the constructed classifier.
-      test_predictions <- predict(train_out, newdata = subset(test_mat, select = -c(is_outlier)))
+      test_predictions <- predict(train_out, test_mat)
       num_outliers$ActiveLearning <- length(test_predictions[test_predictions == 'yes'])
+      outputdf$activeLearning <- test_predictions
+      outputdf$oracle <- oracle$is_outlier
+      outputdf$labeled <- 'no'
+      outputdf[disagreement, 'labeled'] <- 'yes'
       
       #Fill final result of classifier as an output
-      j = 1
-      k = 1
-      for(i in 1:nrow(outputdf)){
-        if(i %in% disagreement){
-          #print(labels[k])
-          outputdf[i,'activeLearning'] <- as.character(labels[k])
-          k = k + 1
-        }  
-        else{
+      #j = 1
+      #k = 1
+      #for(i in 1:nrow(outputdf)){
+      #  if(i %in% disagreement){
+      #    #print(labels[k])
+      #    outputdf[i,'activeLearning'] <- as.character(labels[k])
+      #    k = k + 1
+      #  }  
+      #  else{
           #print(test_predictions[j])
-          outputdf[i,'activeLearning'] <- as.character(test_predictions[j])
-          j = j + 1
-        }
-      }
+      #    outputdf[i,'activeLearning'] <- as.character(test_predictions[j])
+      #    j = j + 1
+      #  }
+      #}
+      
+      #Training Confusion Matrix
+      train_output = confusionMatrix(test_predictions[disagreement], oracle[disagreement, 'is_outlier'])
+      tn = train_output$table[1,1]
+      fp = train_output$table[1,2]
+      fn = train_output$table[2,1]
+      tp = train_output$table[2,2]
+      precision = tp/tp+fp
+      recall = as.numeric(train_output$byClass[2])
+      f1 = 1/(1/precision + 1/recall) 
+      f1 = round(f1, 3)
+      
+      #Final Confusion Matrix
+      train_output = confusionMatrix(test_predictions, oracle$is_outlier)
+      tn = train_output$table[1,1]
+      fp = train_output$table[1,2]
+      fn = train_output$table[2,1]
+      tp = train_output$table[2,2]
+      precision = tp/tp+fp
+      recall = as.numeric(train_output$byClass[2])
+      f2 = 1/(1/precision + 1/recall) 
+      f2 = round(f2, 3)
+      
+      fmeasure = sprintf("%s/%s", f1, f2)
+      
       #Save dataset as output dataframe and CSV file
       location = sprintf("%s_%s_%s.csv", dataset, budget, classifier)
       filename = sprintf("www/%s_%s_%s.rds", dataset, budget, classifier)
@@ -185,9 +220,9 @@ active_learning <- function(dataset, inFile, budget, classifier){
   #}
     
   #Create a dataframe called final analysis to save results of the current iteration
-  final_analysis <- data.frame(matrix(nrow = 1, ncol = 13))
+  final_analysis <- data.frame(matrix(nrow = 1, ncol = 14))
   #colnames(final_analysis) <- c('Summary')
-  colnames(final_analysis) <- c('DataSet', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'kMeans', 'ChiSq', 'BoxPlot', 'MAD', 'threeSigma', 'ActiveLearning','Time', 'Output')
+  colnames(final_analysis) <- c('DataSet', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'kMeans', 'ChiSq', 'BoxPlot', 'MAD', 'threeSigma', 'ActiveLearning', 'fmeasure', 'Time', 'Output')
   final_analysis <- final_analysis[-1,]
   
   #Assigning Error value, if the method is not an output in num_outliers
@@ -231,12 +266,13 @@ active_learning <- function(dataset, inFile, budget, classifier){
   final_analysis[1, 9] <- num_outliers$MAD
   final_analysis[1, 10] <- num_outliers$threeSigma
   final_analysis[1, 11] <- num_outliers$ActiveLearning
-  final_analysis[1, 12] <- Sys.time() - init_time
- 
+  final_analysis[1, 12] <- fmeasure
+  final_analysis[1, 13] <- Sys.time() - init_time
+   
   if(num_outliers$ActiveLearning == 'Error'){
-    final_analysis[1, 13] <- NA
+    final_analysis[1, 14] <- NA
   } else{
-    final_analysis[1, 13] <- createLink(final_analysis, location, output)
+    final_analysis[1, 14] <- createLink(final_analysis, location, output)
   }
   
   output$data_frame <- final_analysis
