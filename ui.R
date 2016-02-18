@@ -5,17 +5,19 @@ ui <- fluidPage(
   headerPanel("Outlier Detection through Active Learning"),
   
   sidebarPanel(
-    selectInput("dataset", label = "Data Set", choices = c('iris', 'ionosphere', 'arrhythmia', 'isolet5', 'pima-indians-diabetes'
-                                                           , 'australian', 'spambase', 'waveform'), selected = TRUE),
+    #selectInput("dataset", label = "Data Set", choices = c('iris', 'ionosphere', 'arrhythmia', 'isolet5', 'pima-indians-diabetes'
+    #                                                       , 'australian', 'spambase', 'waveform'), selected = TRUE),
+    fileInput('infile', 'Upload Dataset', accept=c('rds')),
     textInput('budget', 'Budget', value = 0),
     #textInput('batch', 'Batch', value = 0),
     #selectInput("classifier", label = "Classifier", choices = c('lda'), selected = TRUE),
     textInput('classifier', 'Classifier', value = 'lda'),
+    textInput('knn', 'KNN for LOF', value = 6),
+    textInput('kmn', 'Num Centres for KMean', value = 4),
     actionButton("btn", "Extract"),
     br(),
-    br(),
     textOutput('err'),
-    width = 2
+    width = 3
   ),
   
   mainPanel(

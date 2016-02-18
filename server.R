@@ -1,6 +1,7 @@
 source('active_learning.R')
 source('validate_classifier.R')
 source('installPackages.R')
+source('detectOutliers.R')
 
 #data_sets <- c("iris")
 
@@ -17,7 +18,6 @@ values$out <- data.frame(matrix(nrow = 1, ncol = 14))
 values$first <- TRUE
 
 init <- reactive({
-  #colnames(values$out) <- c('Summary')
   colnames(values$out) <- c('DataSet', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'kMeans', 'ChiSq', 'BoxPlot', 'MAD', 'threeSigma', 'ActiveLearning', 'fmeasure', 'Time', 'Output')
 
   values$out <- values$out[-1,]
@@ -25,32 +25,32 @@ init <- reactive({
 
 server <- function(input, output, session) {
   
-  #out <- data.frame(matrix(nrow = 1, ncol = 11))
-  #colnames(final_analysis) <- c('Summary')
-  #colnames(out) <- c('Data Set', 'Budget', 'Classifier', 'LOF', 'Mahalanobis', 'K Means', 'Chi Sq', 'Box plot', 'MAD', 'threeSigma','Time')
-  #out <- out[-1,]
-  
   #Validation
   output$err <- renderText({input$btn
     validate(
+      need(input$infile, 'Data file required'),
       need(!is.na(input$budget),'Budget cannot be null'),
-      #need(!is.na(input$batch),'Batch value cannot be null'),
       need(!is.na(as.numeric(input$budget)),'The budget should be numeric'),
       need(validate_classifier(input$classifier), 'Invalid Classifier')
-      #need(!is.na(as.numeric(input$batch)),'Batch value should be numeric')
     )
     
     #Load dataset
-    datasetPath <- sprintf('data/sources/%s.data', input$dataset)
-    dat <- read.csv(datasetPath, header = FALSE)
+    #datasetPath <- sprintf('data/sources/%s.data', input$dataset)
+    #dat <- read.csv(datasetPath, header = FALSE)
+    dat <- read.csv(input$infile$datapath, header = FALSE)
+    #print(dat)
     #Create an oracle with random values
-    name_oracle <- sprintf("data/oracle/oracle_%s.rds",input$dataset)
+    #print(input$infile$name)
+    fname <- sub("^([^.]*).*", "\\1", input$infile$name) 
+    name_oracle <- sprintf("data/oracle/oracle_%s.rds",fname)
     oracle <- dat
     oracle$is_outlier <- NA
     
     for(i in 1:nrow(dat)){
       oracle[i, 'is_outlier'] <- sample(c('no', 'yes'), 1)
     }
+    
+    saveRDS(oracle, name_oracle)
     
     validate(
       need(input$file1$datapath, 'Please enter the correct oracle!')
@@ -65,12 +65,23 @@ server <- function(input, output, session) {
     #batch <- as.numeric(input$batch)
     range = sprintf("Budget should be between %s to %s in this case", as.integer(row/10), as.integer(row/3))
     #batch_range = sprintf("Batch should be less than %s", as.integer(row/30))
+    kerror = sprintf("Knn and Kmn should be less than %s", row)
+      
+    knn <- as.numeric(input$knn)
+    kmn <- as.numeric(input$kmn)
     
     validate(
       need(budget <= as.integer(row/3) && budget >= as.integer(row/10),range),
+      need(knn < row && kmn < row, kerror),
       need(nrow(oracle) == row, 'Please enter the correct oracle!')
       #need(batch < budget/3,batch_range)
     )
+    
+    print(input$knn)
+    print(input$kmn)
+    #print(input$infile$datapath)
+    
+    detectOutliers(input$infile$datapath, input$infile$name,row/3, knn, kmn)
   })
 
   #When the button is clicked
@@ -80,8 +91,8 @@ server <- function(input, output, session) {
       return()
     }
  
-    datasetPath <- sprintf('data/sources/%s.data', input$dataset)
-    dat <- read.csv(datasetPath, header = FALSE)
+    #datasetPath <- sprintf('data/sources/%s.data', input$dataset)
+    dat <- read.csv(input$infile$datapath, header = FALSE)
     
     valid <- validate_classifier(input$classifier)
     row <- as.numeric(nrow(dat))
@@ -112,8 +123,10 @@ server <- function(input, output, session) {
       values$first = FALSE
     }
     
-    #print(v())
-    #print(input$file1$datapath)
+    if(as.numeric(input$knn) > row && as.numeric(input$kmn) > row){
+      print(4)
+      return()
+    }
     
     #Get oracle and save it as a label in training matrix
     oracle <- readRDS(input$file1$datapath)
@@ -123,7 +136,7 @@ server <- function(input, output, session) {
     }
     
     #Pass variables to active learning function
-    aloutput <- active_learning(input$dataset, input$file1$datapath, budget, classifier)
+    aloutput <- active_learning(input$infile$datapath, input$infile$name, input$file1$datapath, budget, classifier)
     #print(final_analysis)
     out <- values$out
     out[nrow(out) + 1,] <- aloutput$data_frame[1,]

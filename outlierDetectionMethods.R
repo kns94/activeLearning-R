@@ -8,7 +8,7 @@ lof <- function(df, n, k){
   o1 <-t(t(m1))
   #M1 output LOF detection
   m1 <-t(t(o1[ order(-o1[,1], o1[,1],decreasing=TRUE), ]))
-  m1
+  return(m1)
 }
 
 #mean <- function(df){
@@ -34,22 +34,29 @@ mahal <- function(df, n){
   #M3 Output Mahalanobis outlier detection (multivariate)
   m3 <-t(t(o3[ order(-o3[,1], o3[,1],decreasing=TRUE), ]))
   #df_outlier$mahalanobis <- replace(df_outlier$mahalanobis, m3, 1)
-  unique(m3)
+  return(unique(m3))
 }
 
 chisq <- function(df){
   #Method M4 -- Chi square (monovariate)
-  m4 <- c(which( df[,1]== 7.9), which(df[,2]==  4.4), which(df[,3]==  6.9),which(df[,4]==  2.5))
-  # use regular expression to extract values -- for now manually entered
-  chisq.out.test(df[,1])$alternative # 7.9
-  chisq.out.test(df[,2])$alternative # 4.4
-  chisq.out.test(df[,3])$alternative # 6.9
-  chisq.out.test(df[,4])$alternative # 2.5
+  m4 <- c()
+  for(i in 1:ncol(df)){
+    out <- outlier(as.numeric(df[,i]))
+    colout <- which(df[,i] == out)
+    #print(colout)
+    for(j in 1:length(colout)){
+      if(colout[j] %in% m4){
+        next
+      } else{
+        m4[length(m4)+1] <- colout[j]
+      }
+    }
+  }
   o4 <- t(t(m4))
   #M4 Output of Chisquare method
   m4 <-t(t(o4[ order(-o4[,1], o4[,1],decreasing=TRUE), ]))
   #df_outlier$chisq <- replace(df_outlier$chisq, m4, 1)
-  unique(m4)
+  return(unique(m4))
 }
 
 km <- function(df, n, k){
@@ -63,7 +70,7 @@ km <- function(df, n, k){
   centers <- kmeans.result$centers[kmeans.result$cluster, ]
   distances <- sqrt(rowSums((df - centers)^2))
   outliers <- order(distances, decreasing=T)[1:n]
-  unique(outliers)
+  return(unique(outliers))
 }
 
 box <- function(df){
@@ -78,7 +85,7 @@ box <- function(df){
       }
     }
   }
-  unique(outliers)
+  return(unique(outliers))
   #outliers
 }
 
@@ -111,7 +118,7 @@ MADO <- function(df){
     }
   }
   #Unique row names 
-  unique(outliers)
+  return(unique(outliers))
 }
 
 threeSig <- function(df){
@@ -146,5 +153,5 @@ threeSig <- function(df){
     }
   }
   #Unique outliers
-  unique(outliers)
+  return(unique(outliers))
 }

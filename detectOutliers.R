@@ -1,12 +1,25 @@
 source('outlierDetectionMethods.R')
 
-detectOutliers <- function(dataset, maxOut){
+detectOutliers <- function(datasetpath, datasetname, maxOut, k, n){
   
-  datasetPath <- sprintf('data/sources/%s.data', dataset)
-  dat <- read.csv(datasetPath, header = FALSE)
+ 
+  #datasetPath <- sprintf('data/sources/%s.data', dataset)
+  #dat <- read.csv(datasetPath, header = FALSE)
   #Take non categorical columns
+  print('Detecting Outliers')
+  dat <- read.csv(datasetpath, header = FALSE)
   data_frame <- dat[sapply(dat, function(x) !is.factor(x))]
   
+  tempdf <- data.frame(matrix(0, nrow = nrow(data_frame), ncol = 0))
+  
+  for(i in 1:ncol(data_frame)){
+    data_frame[,i] <- as.numeric(data_frame[,i])
+    if(sum(data_frame[,i] != 0)){
+      tempdf[,colnames(data_frame)[i]] <- data_frame[,i]
+    }
+  }
+  
+  data_frame <- tempdf
   #Create an empty list to record number of outlier for every method
   num_outliers <- list()
   
@@ -21,7 +34,7 @@ detectOutliers <- function(dataset, maxOut){
   #LOF
   LOF <- NA
   out <- tryCatch({
-    LOF <- lof(data_frame, maxOut, 6)
+    LOF <- lof(data_frame, maxOut, k)
     num_outliers$LOF <- maxOut
   },
   error = function(x){
@@ -60,7 +73,7 @@ detectOutliers <- function(dataset, maxOut){
   #Using KMeans
   kMeans <- NA
   out <- tryCatch({
-    kMeans <- km(data_frame, maxOut, 4)
+    kMeans <- km(data_frame, maxOut, n)
     num_outliers$kMeans <- maxOut
   },
   error = function(x){
@@ -169,10 +182,12 @@ detectOutliers <- function(dataset, maxOut){
   #disagreement <- vote_entropy(df_outlier)
   #Order disagreement and fetch only top values according to budged
   #disagreement <- order(disagreement, decreasing = TRUE)[1:maxOut]
-  
+  dataset <- sub("^([^.]*).*", "\\1", datasetname) 
+  #print(dataset)
+  df_outlier <- cbind(data_frame, df_outlier)
   filename = sprintf("data/outliers/%s_outliers.rds", dataset)
   saveRDS(df_outlier, filename)
   
   filename = sprintf("data/outliers/%s_outliers.csv", dataset)
-  write.csv(df_outlier, filename)
+  write.csv(df_outlier, filename, row.names = FALSE)
 }

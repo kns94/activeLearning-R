@@ -17,7 +17,7 @@ vote_entropy <- function(df){
   ent
 }
 
-active_learning <- function(dataset, inFile, budget, classifier){
+active_learning <- function(datasetpath, datasetname, inFile, budget, classifier){
   
   #Delete Existing Files
   current = getwd()
@@ -36,10 +36,23 @@ active_learning <- function(dataset, inFile, budget, classifier){
   #Oracle is the ground truth we will use to evaluate active learning
   #oracle <- sprintf("oracle_%s",dataset)
   #Fetch specified dataset from data folder
-  datasetPath <- sprintf('data/sources/%s.data', dataset)
-  dat <- read.csv(datasetPath, header = FALSE)
+  #datasetPath <- sprintf('data/sources/%s.data', dataset)
+  #dat <- read.csv(datasetPath, header = FALSE)
+  print('Active Learning')
+  dat <- read.csv(datasetpath, header = FALSE)
+  dataset <- sub("^([^.]*).*", "\\1", datasetname) 
   #Take non categorical columns
   data_frame <- dat[sapply(dat, function(x) !is.factor(x))]
+  tempdf <- data.frame(matrix(0, nrow = nrow(data_frame), ncol = 0))
+  
+  for(i in 1:ncol(data_frame)){
+    data_frame[,i] <- as.numeric(data_frame[,i])
+    if(sum(data_frame[,i] != 0)){
+      tempdf[,colnames(data_frame)[i]] <- data_frame[,i]
+    }
+  }
+  
+  data_frame <- tempdf
   
   outlier_file_name = sprintf('data/outliers/%s_outliers.rds', dataset)
   print(outlier_file_name)
@@ -213,7 +226,7 @@ active_learning <- function(dataset, inFile, budget, classifier){
       filename = sprintf("www/%s_%s_%s.rds", dataset, budget, classifier)
       saveRDS(outputdf, filename)
       csvfilename = sprintf("www/%s_%s_%s.csv", dataset, budget, classifier)
-      write.csv(csvfilename, x = outputdf)
+      write.csv(csvfilename, x = outputdf, row.names = FALSE)
     }
     else{
       #If classification fails then return NA
