@@ -17,7 +17,7 @@ ui <- fluidPage(
     actionButton("btn", "Extract"),
     br(),
     textOutput('err'),
-    width = 3
+    width = 2
   ),
   
   mainPanel(
@@ -29,7 +29,7 @@ ui <- fluidPage(
     #textOutput('err1'),
     tableOutput("batch_table"),
     br(),
-    dataTableOutput("final_analysis")
+    div(dataTableOutput("final_analysis"), style = "font-size:80%")
     #actionButton('end_button')
   )
 )

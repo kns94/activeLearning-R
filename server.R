@@ -147,6 +147,7 @@ server <- function(input, output, session) {
     output$final_analysis <- renderDataTable({
       #out$Output <- createLink(out$Output)
       return(out)
-    }, escape = FALSE)
+    }, escape = FALSE, options = list(autoWidth = FALSE, columnDefs = list(list(sWidth = '10px', targets = "_all"))
+    ))
   })
 }
