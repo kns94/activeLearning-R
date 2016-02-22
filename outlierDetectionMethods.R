@@ -25,7 +25,7 @@ lof <- function(df, n, k){
 
 mahal <- function(df, n){
   #Method M3 -- Mahalanobis distance (multivariate)
-  m.dist.order                  <- order(mahalanobis(df, colMeans(df), cov(df)), decreasing=TRUE)
+  m.dist.order                  <- order(mahalanobis(df, colMeans(df), cov(df),tol=1e-100), decreasing=TRUE)
   is.outlier                    <- rep(FALSE, nrow(df))
   is.outlier[m.dist.order[1:n]] <- TRUE # Mark as outliers the n most extreme points
   col                           <- is.outlier + 1
