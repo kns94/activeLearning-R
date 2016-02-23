@@ -1,4 +1,4 @@
-pwdlibrary(shiny)
+library(shiny)
 
 ui <- fluidPage(
   
